@@ -1,13 +1,21 @@
-/* eslint-disable no-unreachable */
-import React, {useState, useEffect} from "react";
+import React, { useEffect, useState } from "react";
 import {
   BrowserRouter as Router,
   Switch,
   Route,
   Link
 } from "react-router-dom";
+import Dexie from 'dexie';
+
 
 export default function App() {
+  const db = new Dexie('FormsDatabase');
+  useEffect(
+    () => {
+      db.version(1).stores({ forms: '++id' });
+    },
+    [db]
+  )
   return (
     <Router>
       <div>
@@ -24,14 +32,12 @@ export default function App() {
           </ul>
         </nav>
 
-        {/* A <Switch> looks through its children <Route>s and
-            renders the first one that matches the current URL. */}
         <Switch>
           <Route path="/seating">
-            <Seating />
+            <Seating db={db}/>
           </Route>
           <Route path="/">
-            <Booking />
+            <Booking db={db} />
           </Route>
         </Switch>
       </div>
@@ -39,17 +45,9 @@ export default function App() {
   );
 }
 
-function Booking() {
+function Booking({db}) {
+  
   const [formData, setFormData] = useState({ firstname: '', lastname: '' });
-  console.log(formData)
-/*   useEffect(
-    () => {
-      // create the store
-      db.version(1).stores({ forms: 'value' });
-    },
-    // run effect whenever the database connection changes
-    [db]
-  ) */
 
   const handleSetName = fieldName => e => {
     const value = e.target.value;
@@ -60,8 +58,9 @@ function Booking() {
 
   const handleSubmit = e => {
     e.preventDefault();
-    window.localStorage.setItem("1", JSON.stringify(formData));
-    console.log((window.localStorage.getItem("1")));
+    db.table('forms').add(formData);
+    setFormData({firstname: '', lastname: '' });
+
   }
 
   return (
@@ -83,13 +82,34 @@ function Booking() {
         value={formData.lastname}
         onChange={handleSetName('lastname')}
       />
-      <br />
+       <br />
       <input type="submit" value="Submit" />
       </form>
   )  
 }
 
-function Seating() {
-  return <h2>Seating Page</h2>;
-}
+function Seating({db}) {
+  const [formsData, setFormsData] = useState([]);
 
+  useEffect( () => {
+    
+    db.table('forms')
+    .toArray()
+    .then((todos) => {
+      setFormsData( todos );
+    });
+
+  },[db]);
+
+    return (
+      <div>
+        {formsData.map((item, index) => 
+          (<div key={index}>
+            <p>{item.firstname}</p>
+            <p>{item.lastname}</p>
+            <br/>
+          </div>))
+        }
+      </div>
+      )
+}
