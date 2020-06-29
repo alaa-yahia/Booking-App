@@ -9,6 +9,13 @@ import Dexie from 'dexie';
 
 
 export default function App() {
+  const db = new Dexie('FormsDatabase');
+  useEffect(
+    () => {
+      db.version(1).stores({ forms: '++id' });
+    },
+    [db]
+  )
   return (
     <Router>
       <div>
@@ -25,14 +32,12 @@ export default function App() {
           </ul>
         </nav>
 
-        {/* A <Switch> looks through its children <Route>s and
-            renders the first one that matches the current URL. */}
         <Switch>
           <Route path="/seating">
-            <Seating />
+            <Seating db={db}/>
           </Route>
           <Route path="/">
-            <Booking />
+            <Booking db={db} />
           </Route>
         </Switch>
       </div>
@@ -40,18 +45,9 @@ export default function App() {
   );
 }
 
-function Booking() {
-  const db = new Dexie('FormsDatabase');
+function Booking({db}) {
+  
   const [formData, setFormData] = useState({ firstname: '', lastname: '' });
-
-  useEffect(
-    () => {
-      // create the store
-      db.version(1).stores({ forms: 'value' });
-    },
-    // run effect whenever the database connection changes
-    [db]
-  )
 
   const handleSetName = fieldName => e => {
     const value = e.target.value;
@@ -62,12 +58,9 @@ function Booking() {
 
   const handleSubmit = e => {
     e.preventDefault();
-    db.forms.put({ value: String(formData)}).then (function(){
-      //
-      // Then when data is stored, read from it
-      //
-     return ( db.forms.get( String(formData))).then((x)=> console.log(Object.keys(x.value)));
-    });
+    db.table('forms').add(formData);
+    setFormData({firstname: '', lastname: '' });
+
   }
 
   return (
@@ -95,7 +88,29 @@ function Booking() {
   )  
 }
 
-function Seating() {
-  return <h2>Seating Page</h2>;
-}
+function Seating({db}) {
+  const [formsData, setFormsData] = useState([]);
 
+  useEffect( () => {
+    
+    db.table('forms')
+    .toArray()
+    .then((todos) => {
+      setFormsData( todos );
+    });
+
+  },[db]);
+
+    return (
+      <div>
+        {formsData.map((item, index) => 
+          (<div key={index}>
+            <p>{item.firstname}</p>
+            <p>{item.lastname}</p>
+            <br/>
+          </div>))
+        }
+      </div>
+
+      )
+}
